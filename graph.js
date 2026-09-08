@@ -1,6 +1,15 @@
 // v1: colunas de ano, largura igual, 2009-2025. Nós entram depois --
 // por ora só o eixo de tempo. Ver PLANO.md.
 
+function slugify(texto) {
+  return texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 const Grafo = (() => {
   async function iniciar() {
     const dados = await d3.json("data/songs.json");
@@ -56,6 +65,72 @@ const Grafo = (() => {
 
     desenharColunas();
 
+    const margemSuperior = 16;
+    const capaMax = 96;
+
+    const albunsPorAno = new Map();
+    dados.forEach((d) => {
+      if (!albunsPorAno.has(d.ano)) albunsPorAno.set(d.ano, []);
+      const lista = albunsPorAno.get(d.ano);
+      if (!lista.includes(d.album)) lista.push(d.album);
+    });
+
+    const grupoCapas = svg.append("g").attr("class", "album-covers");
+
+    function desenharCapas() {
+      const passo = xScale.step();
+      const entradas = [];
+
+      anos.forEach((ano) => {
+        const albuns = albunsPorAno.get(ano);
+        if (!albuns) return;
+        const largSlot = passo / albuns.length;
+        const tamanho = Math.min(capaMax, largSlot - 8);
+        albuns.forEach((album, i) => {
+          entradas.push({
+            chave: `${ano}__${album}`,
+            ano,
+            album,
+            slug: slugify(album),
+            tamanho,
+            x: xScale(ano) + largSlot * i + largSlot / 2 - tamanho / 2,
+          });
+        });
+      });
+
+      const grupos = grupoCapas
+        .selectAll("g.cover")
+        .data(entradas, (d) => d.chave)
+        .join((enter) => {
+          const g = enter.append("g").attr("class", "cover");
+          g.append("rect").attr("class", "cover-placeholder");
+          g.append("image").attr("class", "cover-image");
+          g.append("title");
+          return g;
+        });
+
+      grupos.attr("transform", (d) => `translate(${d.x}, ${margemSuperior})`);
+
+      grupos.select("title").text((d) => `${d.album} (${d.ano})`);
+
+      grupos
+        .select("rect.cover-placeholder")
+        .attr("width", (d) => d.tamanho)
+        .attr("height", (d) => d.tamanho);
+
+      grupos
+        .select("image.cover-image")
+        .attr("width", (d) => d.tamanho)
+        .attr("height", (d) => d.tamanho)
+        .attr("href", (d) => `capas/${d.slug}.jpg`)
+        .style("display", null)
+        .on("error", function () {
+          d3.select(this).style("display", "none");
+        });
+    }
+
+    desenharCapas();
+
     const centro = (ano) => xScale(ano) + xScale.bandwidth() / 2;
 
     const raioMax = () => Math.min(12, xScale.bandwidth() / 2 - 2);
@@ -91,6 +166,7 @@ const Grafo = (() => {
 
     window.addEventListener("resize", () => {
       desenharColunas();
+      desenharCapas();
       radius.range([2, raioMax()]);
       nodeSel.attr("r", (d) => radius(d.palavras));
       simulation.force("y", d3.forceY(altura() / 2).strength(0.04));

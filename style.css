@@ -44,3 +44,13 @@ body {
   font-family: "Helvetica Neue", Arial, sans-serif;
   font-size: 12px;
 }
+
+.cover-placeholder {
+  fill: none;
+  stroke: var(--line);
+  stroke-dasharray: 3 3;
+}
+
+.cover-image {
+  object-fit: cover;
+}
