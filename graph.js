@@ -1,36 +1,60 @@
-// v1: discografia inteira no eixo do tempo. Sem tema/cor por valor ainda --
-// isso entra quando scraper/exportar_grafo.py (repo valores) ganhar esses
-// campos. Ver PLANO.md.
+// v1: discografia inteira no eixo do tempo, com linhas verticais marcando o ano
+// de cada lançamento. Sem tema/cor por valor ainda -- isso entra quando
+// scraper/exportar_grafo.py (repo valores) ganhar esses campos. Ver PLANO.md.
 
 const Grafo = (() => {
-  let simulation, xScale, radius, svg, nodeSel;
-
   async function iniciar() {
     const dados = await d3.json("data/songs.json");
 
     const largura = () => document.getElementById("graphic").clientWidth;
     const altura = () => document.getElementById("graphic").clientHeight;
 
-    svg = d3.select("#grafo");
+    const svg = d3.select("#grafo");
+    const margemInferior = 40;
 
-    xScale = d3
+    const xScale = d3
       .scaleLinear()
       .domain(d3.extent(dados, (d) => d.ano))
       .range([60, largura() - 40]);
 
-    radius = d3
+    const radius = d3
       .scaleSqrt()
       .domain([0, d3.max(dados, (d) => d.palavras)])
       .range([3, 22]);
 
-    const eixoX = d3.axisBottom(xScale).tickFormat(d3.format("d")).ticks(8);
-    const grupoEixo = svg
-      .append("g")
-      .attr("class", "axis")
-      .attr("transform", `translate(0, ${altura() - 40})`)
-      .call(eixoX);
+    const anos = Array.from(new Set(dados.map((d) => d.ano))).sort((a, b) => a - b);
 
-    nodeSel = svg
+    const grupoAnos = svg.append("g").attr("class", "year-lines");
+
+    function desenharLinhasDeAno() {
+      const h = altura() - margemInferior;
+
+      const linhas = grupoAnos
+        .selectAll("line")
+        .data(anos, (d) => d)
+        .join("line")
+        .attr("class", "year-line")
+        .attr("x1", (d) => xScale(d))
+        .attr("x2", (d) => xScale(d))
+        .attr("y1", 0)
+        .attr("y2", h);
+
+      const labels = grupoAnos
+        .selectAll("text")
+        .data(anos, (d) => d)
+        .join("text")
+        .attr("class", "year-label")
+        .attr("x", (d) => xScale(d))
+        .attr("y", h + 16)
+        .attr("text-anchor", "middle")
+        .text((d) => d);
+
+      return { linhas, labels };
+    }
+
+    desenharLinhasDeAno();
+
+    const nodeSel = svg
       .append("g")
       .selectAll("circle")
       .data(dados, (d) => d.id)
@@ -42,7 +66,7 @@ const Grafo = (() => {
       .append("title")
       .text((d) => `${d.titulo} — ${d.album} (${d.ano}) · ${d.palavras} palavras`);
 
-    simulation = d3
+    const simulation = d3
       .forceSimulation(dados)
       .force("x", d3.forceX((d) => xScale(d.ano)).strength(0.9))
       .force("y", d3.forceY(altura() / 2).strength(0.04))
@@ -56,19 +80,12 @@ const Grafo = (() => {
 
     window.addEventListener("resize", () => {
       xScale.range([60, largura() - 40]);
-      grupoEixo
-        .attr("transform", `translate(0, ${altura() - 40})`)
-        .call(eixoX);
+      desenharLinhasDeAno();
       simulation.alpha(0.3).restart();
     });
   }
 
-  function realcarFaixa(anoMin, anoMax) {
-    if (!nodeSel) return;
-    nodeSel.classed("dim", (d) => d.ano < anoMin || d.ano > anoMax);
-  }
-
-  return { iniciar, realcarFaixa };
+  return { iniciar };
 })();
 
 Grafo.iniciar();
