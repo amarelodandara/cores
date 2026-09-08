@@ -58,10 +58,12 @@ const Grafo = (() => {
 
     const centro = (ano) => xScale(ano) + xScale.bandwidth() / 2;
 
+    const raioMax = () => Math.min(12, xScale.bandwidth() / 2 - 2);
+
     const radius = d3
       .scaleSqrt()
       .domain([0, d3.max(dados, (d) => d.palavras)])
-      .range([3, xScale.bandwidth() / 2 - 2]);
+      .range([2, raioMax()]);
 
     const nodeSel = svg
       .append("g")
@@ -89,7 +91,7 @@ const Grafo = (() => {
 
     window.addEventListener("resize", () => {
       desenharColunas();
-      radius.range([3, xScale.bandwidth() / 2 - 2]);
+      radius.range([2, raioMax()]);
       nodeSel.attr("r", (d) => radius(d.palavras));
       simulation.force("y", d3.forceY(altura() / 2).strength(0.04));
       simulation.alpha(0.3).restart();
