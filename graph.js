@@ -1,6 +1,5 @@
-// v1: discografia inteira no eixo do tempo, com linhas verticais marcando o ano
-// de cada lançamento. Sem tema/cor por valor ainda -- isso entra quando
-// scraper/exportar_grafo.py (repo valores) ganhar esses campos. Ver PLANO.md.
+// v1: colunas de ano, largura igual, 2009-2025. Nós entram depois --
+// por ora só o eixo de tempo. Ver PLANO.md.
 
 const Grafo = (() => {
   async function iniciar() {
@@ -12,23 +11,17 @@ const Grafo = (() => {
     const svg = d3.select("#grafo");
     const margemInferior = 40;
 
-    const xScale = d3
-      .scaleLinear()
-      .domain(d3.extent(dados, (d) => d.ano))
-      .range([60, largura() - 40]);
-
-    const radius = d3
-      .scaleSqrt()
-      .domain([0, d3.max(dados, (d) => d.palavras)])
-      .range([3, 22]);
-
     const [anoMin, anoMax] = d3.extent(dados, (d) => d.ano);
     const anos = d3.range(anoMin, anoMax + 1);
 
-    const grupoAnos = svg.append("g").attr("class", "year-lines");
+    const xScale = d3.scaleBand().domain(anos).range([0, largura()]).paddingOuter(0);
 
-    function desenharLinhasDeAno() {
+    const grupoAnos = svg.append("g").attr("class", "year-columns");
+
+    function desenharColunas() {
+      xScale.range([0, largura()]);
       const h = altura() - margemInferior;
+      const passo = xScale.step();
 
       const linhas = grupoAnos
         .selectAll("line")
@@ -40,50 +33,30 @@ const Grafo = (() => {
         .attr("y1", 0)
         .attr("y2", h);
 
-      const labels = grupoAnos
+      grupoAnos
+        .selectAll("line.year-line-end")
+        .data([anoMax])
+        .join("line")
+        .attr("class", "year-line year-line-end")
+        .attr("x1", xScale(anoMax) + passo)
+        .attr("x2", xScale(anoMax) + passo)
+        .attr("y1", 0)
+        .attr("y2", h);
+
+      grupoAnos
         .selectAll("text")
         .data(anos, (d) => d)
         .join("text")
         .attr("class", "year-label")
-        .attr("x", (d) => xScale(d))
+        .attr("x", (d) => xScale(d) + passo / 2)
         .attr("y", h + 16)
         .attr("text-anchor", "middle")
         .text((d) => d);
-
-      return { linhas, labels };
     }
 
-    desenharLinhasDeAno();
+    desenharColunas();
 
-    const nodeSel = svg
-      .append("g")
-      .selectAll("circle")
-      .data(dados, (d) => d.id)
-      .join("circle")
-      .attr("class", "node")
-      .attr("r", (d) => radius(d.palavras));
-
-    nodeSel
-      .append("title")
-      .text((d) => `${d.titulo} — ${d.album} (${d.ano}) · ${d.palavras} palavras`);
-
-    const simulation = d3
-      .forceSimulation(dados)
-      .force("x", d3.forceX((d) => xScale(d.ano)).strength(0.9))
-      .force("y", d3.forceY(altura() / 2).strength(0.04))
-      .force(
-        "collide",
-        d3.forceCollide((d) => radius(d.palavras) + 1.5)
-      )
-      .on("tick", () => {
-        nodeSel.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
-      });
-
-    window.addEventListener("resize", () => {
-      xScale.range([60, largura() - 40]);
-      desenharLinhasDeAno();
-      simulation.alpha(0.3).restart();
-    });
+    window.addEventListener("resize", desenharColunas);
   }
 
   return { iniciar };
