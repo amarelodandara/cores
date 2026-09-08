@@ -22,7 +22,8 @@ const Grafo = (() => {
       .domain([0, d3.max(dados, (d) => d.palavras)])
       .range([3, 22]);
 
-    const anos = Array.from(new Set(dados.map((d) => d.ano))).sort((a, b) => a - b);
+    const [anoMin, anoMax] = d3.extent(dados, (d) => d.ano);
+    const anos = d3.range(anoMin, anoMax + 1);
 
     const grupoAnos = svg.append("g").attr("class", "year-lines");
 
