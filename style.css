@@ -61,6 +61,7 @@ body {
   fill: none;
   stroke: var(--line);
   stroke-dasharray: 3 3;
+  pointer-events: all;
 }
 
 .cover-image {
