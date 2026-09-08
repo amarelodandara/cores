@@ -56,7 +56,44 @@ const Grafo = (() => {
 
     desenharColunas();
 
-    window.addEventListener("resize", desenharColunas);
+    const centro = (ano) => xScale(ano) + xScale.bandwidth() / 2;
+
+    const radius = d3
+      .scaleSqrt()
+      .domain([0, d3.max(dados, (d) => d.palavras)])
+      .range([3, xScale.bandwidth() / 2 - 2]);
+
+    const nodeSel = svg
+      .append("g")
+      .selectAll("circle")
+      .data(dados, (d) => d.id)
+      .join("circle")
+      .attr("class", "node")
+      .attr("r", (d) => radius(d.palavras));
+
+    nodeSel
+      .append("title")
+      .text((d) => `${d.titulo} — ${d.album} (${d.ano}) · ${d.palavras} palavras`);
+
+    const simulation = d3
+      .forceSimulation(dados)
+      .force("x", d3.forceX((d) => centro(d.ano)).strength(0.9))
+      .force("y", d3.forceY(altura() / 2).strength(0.04))
+      .force(
+        "collide",
+        d3.forceCollide((d) => radius(d.palavras) + 1.5)
+      )
+      .on("tick", () => {
+        nodeSel.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
+      });
+
+    window.addEventListener("resize", () => {
+      desenharColunas();
+      radius.range([3, xScale.bandwidth() / 2 - 2]);
+      nodeSel.attr("r", (d) => radius(d.palavras));
+      simulation.force("y", d3.forceY(altura() / 2).strength(0.04));
+      simulation.alpha(0.3).restart();
+    });
   }
 
   return { iniciar };
