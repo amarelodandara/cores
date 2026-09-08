@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cores — a obra de Emicida em rede</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="intro">
+    <h1>Cores</h1>
+    <p>
+      116 músicas, 12 lançamentos, 2009–2025. Cada ponto é uma faixa; o tamanho é o
+      número de palavras da letra. Esta é a v1 — só a discografia no tempo. Tema e cor
+      por valor entram numa próxima versão, depois que a análise de valores avançar.
+    </p>
+  </header>
+
+  <main class="scrolly">
+    <div class="graphic" id="graphic">
+      <svg id="grafo"></svg>
+    </div>
+    <div class="steps">
+      <div class="step" data-ano-min="2009" data-ano-max="2025">
+        <p>A discografia inteira do Emicida, uma faixa por ponto, posicionada pelo ano
+        de lançamento.</p>
+      </div>
+      <div class="step" data-ano-min="2009" data-ano-max="2013">
+        <p>Primeira fase: de "Pra Quem Já Mordeu Um Cachorro Por Comida..." (2009) até
+        "O Glorioso Retorno de Quem Nunca Esteve Aqui" (2013).</p>
+      </div>
+      <div class="step" data-ano-min="2015" data-ano-max="2017">
+        <p>"Sobre Crianças, Quadris, Pesadelos e Lições de Casa..." (2015) e "Língua
+        Franca" (2017).</p>
+      </div>
+      <div class="step" data-ano-min="2019" data-ano-max="2021">
+        <p>A fase AmarElo, de estúdio e ao vivo.</p>
+      </div>
+      <div class="step" data-ano-min="2025" data-ano-max="2025">
+        <p>"Emicida Racional VL 2" (2025), o lançamento mais recente do acervo.</p>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/scrollama@3/build/scrollama.min.js"></script>
+  <script src="graph.js"></script>
+  <script src="scroll.js"></script>
+</body>
+</html>
