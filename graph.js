@@ -74,6 +74,7 @@ const Grafo = (() => {
 
     const margemSuperior = 16;
     const capaMax = 96;
+    const capaMini = 48;
 
     const albunsPorAno = new Map();
     dados.forEach((d) => {
@@ -82,27 +83,59 @@ const Grafo = (() => {
       if (!lista.includes(d.album)) lista.push(d.album);
     });
 
+    // Ano com 1 álbum: nós centralizados na coluna inteira, capa em cima.
+    // Ano com 2+ álbuns: coluna divide em bandas horizontais (uma por álbum,
+    // empilhadas), cada uma com sua própria capa ao lado do cluster de nós.
+    function centroYAlbum(ano, album) {
+      const albuns = albunsPorAno.get(ano);
+      const total = albuns.length;
+      if (total <= 1) return altura() / 2;
+      const h = altura() - margemInferior;
+      const usableTop = margemSuperior + 8;
+      const usableBottom = h - 8;
+      const bandHeight = (usableBottom - usableTop) / total;
+      const i = albuns.indexOf(album);
+      return usableTop + bandHeight * (i + 0.5);
+    }
+
     const grupoCapas = svg.append("g").attr("class", "album-covers");
 
     function desenharCapas() {
       const passo = xScale.step();
+      const h = altura() - margemInferior;
       const entradas = [];
 
       anos.forEach((ano) => {
         const albuns = albunsPorAno.get(ano);
         if (!albuns) return;
-        const largSlot = passo / albuns.length;
-        const tamanho = Math.min(capaMax, largSlot - 8);
+        const total = albuns.length;
+
         albuns.forEach((album, i) => {
+          let tamanho, x, y;
+
+          if (total === 1) {
+            tamanho = Math.min(capaMax, passo - 8);
+            x = xScale(ano) + passo / 2 - tamanho / 2;
+            y = margemSuperior;
+          } else {
+            const usableTop = margemSuperior + 8;
+            const usableBottom = h - 8;
+            const bandHeight = (usableBottom - usableTop) / total;
+            tamanho = Math.min(capaMini, passo / 2 - 8, bandHeight - 12);
+            x = xScale(ano) + 4;
+            y = centroYAlbum(ano, album) - tamanho / 2;
+          }
+
           entradas.push({
             chave: `${ano}__${album}`,
             ano,
             album,
             slug: slugify(album),
             tamanho,
-            x: xScale(ano) + largSlot * i + largSlot / 2 - tamanho / 2,
-            slotX: xScale(ano) + largSlot * i,
-            slotWidth: largSlot,
+            x,
+            y,
+            slotX: xScale(ano),
+            slotWidth: passo,
           });
         });
       });
@@ -119,7 +152,7 @@ const Grafo = (() => {
           return g;
         });
 
-      grupos.attr("transform", (d) => `translate(${d.x}, ${margemSuperior})`);
+      grupos.attr("transform", (d) => `translate(${d.x}, ${d.y})`);
 
       grupos.select("title").text((d) => `${d.album} (${d.ano})`);
 
@@ -188,7 +221,7 @@ const Grafo = (() => {
     const simulation = d3
       .forceSimulation(dados)
       .force("x", d3.forceX((d) => centro(d.ano)).strength(0.9))
-      .force("y", d3.forceY(altura() / 2).strength(0.04))
+      .force("y", d3.forceY((d) => centroYAlbum(d.ano, d.album)).strength(0.08))
       .force(
         "collide",
         d3.forceCollide((d) => radius(d.palavras) + 1.5)
@@ -202,7 +235,7 @@ const Grafo = (() => {
       desenharCapas();
       radius.range([2, raioMax()]);
       nodeSel.attr("r", (d) => radius(d.palavras));
-      simulation.force("y", d3.forceY(altura() / 2).strength(0.04));
+      simulation.force("y", d3.forceY((d) => centroYAlbum(d.ano, d.album)).strength(0.08));
       simulation.alpha(0.3).restart();
     });
   }
