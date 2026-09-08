@@ -65,6 +65,13 @@ const Grafo = (() => {
 
     desenharColunas();
 
+    const grupoDestaque = svg.append("g").attr("class", "album-highlight");
+    const destaqueRect = grupoDestaque
+      .append("rect")
+      .attr("class", "highlight-rect")
+      .attr("y", 0)
+      .style("opacity", 0);
+
     const margemSuperior = 16;
     const capaMax = 96;
 
@@ -94,6 +101,8 @@ const Grafo = (() => {
             slug: slugify(album),
             tamanho,
             x: xScale(ano) + largSlot * i + largSlot / 2 - tamanho / 2,
+            slotX: xScale(ano) + largSlot * i,
+            slotWidth: largSlot,
           });
         });
       });
@@ -105,6 +114,7 @@ const Grafo = (() => {
           const g = enter.append("g").attr("class", "cover");
           g.append("rect").attr("class", "cover-placeholder");
           g.append("image").attr("class", "cover-image");
+          g.append("text").attr("class", "cover-label");
           g.append("title");
           return g;
         });
@@ -126,6 +136,29 @@ const Grafo = (() => {
         .style("display", null)
         .on("error", function () {
           d3.select(this).style("display", "none");
+        });
+
+      grupos
+        .select("text.cover-label")
+        .attr("x", (d) => d.tamanho / 2)
+        .attr("y", (d) => d.tamanho + 16)
+        .attr("text-anchor", "middle")
+        .text((d) => d.album);
+
+      grupos
+        .on("mouseenter", function (event, d) {
+          nodeSel.classed("dim", (s) => s.album !== d.album);
+          d3.select(this).select("text.cover-label").classed("is-visible", true);
+          destaqueRect
+            .attr("x", d.slotX)
+            .attr("width", d.slotWidth)
+            .attr("height", altura() - margemInferior)
+            .style("opacity", 1);
+        })
+        .on("mouseleave", function () {
+          nodeSel.classed("dim", false);
+          d3.select(this).select("text.cover-label").classed("is-visible", false);
+          destaqueRect.style("opacity", 0);
         });
     }
 

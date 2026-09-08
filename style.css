@@ -32,6 +32,18 @@ body {
 .node {
   fill: var(--accent);
   fill-opacity: 0.85;
+  transition: fill-opacity 200ms ease;
+}
+
+.node.dim {
+  fill-opacity: 0.12;
+}
+
+.highlight-rect {
+  fill: var(--accent);
+  fill-opacity: 0.08;
+  transition: opacity 200ms ease;
+  pointer-events: none;
 }
 
 .year-line {
@@ -53,4 +65,21 @@ body {
 
 .cover-image {
   object-fit: cover;
+}
+
+.cover {
+  cursor: pointer;
+}
+
+.cover-label {
+  fill: var(--fg);
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 11px;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+
+.cover-label.is-visible {
+  opacity: 1;
 }
