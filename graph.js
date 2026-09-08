@@ -73,19 +73,26 @@ const Grafo = (() => {
       .style("opacity", 0);
 
     const margemSuperior = 16;
-    const capaMax = 96;
-    const capaMini = 48;
+
+    // Tamanho-base da capa por tipo de lançamento -- ajusta o teto pra
+    // largura da coluna/banda depois. Mixtape ainda não aparece nos dados
+    // curados (as 3 mixtapes viraram "Álbum" na curadoria), mas o tipo
+    // fica pronto se isso mudar.
+    const tamanhoPorTipo = { Álbum: 72, Mixtape: 56, "Single/EP": 40 };
+    const tamanhoPadrao = 48;
 
     const albunsPorAno = new Map();
+    const tipoPorAlbum = new Map();
     dados.forEach((d) => {
       if (!albunsPorAno.has(d.ano)) albunsPorAno.set(d.ano, []);
       const lista = albunsPorAno.get(d.ano);
       if (!lista.includes(d.album)) lista.push(d.album);
+      if (!tipoPorAlbum.has(d.album)) tipoPorAlbum.set(d.album, d.tipo_lancamento);
     });
 
-    // Ano com 1 álbum: nós centralizados na coluna inteira, capa em cima.
-    // Ano com 2+ álbuns: coluna divide em bandas horizontais (uma por álbum,
-    // empilhadas), cada uma com sua própria capa ao lado do cluster de nós.
+    // Coluna do ano divide em bandas horizontais, uma por álbum (empilhadas
+    // de cima pra baixo). Com só 1 álbum a banda é a coluna inteira. Cada
+    // capa fica colada na borda esquerda, alinhada ao cluster do seu álbum.
     function centroYAlbum(ano, album) {
       const albuns = albunsPorAno.get(ano);
       const total = albuns.length;
@@ -109,27 +116,22 @@ const Grafo = (() => {
         const albuns = albunsPorAno.get(ano);
         if (!albuns) return;
         const total = albuns.length;
+        const usableTop = margemSuperior + 8;
+        const usableBottom = h - 8;
+        const bandHeight = (usableBottom - usableTop) / total;
 
         albuns.forEach((album, i) => {
-          let tamanho, x, y;
-
-          if (total === 1) {
-            tamanho = Math.min(capaMax, passo - 8);
-            x = xScale(ano) + passo / 2 - tamanho / 2;
-            y = margemSuperior;
-          } else {
-            const usableTop = margemSuperior + 8;
-            const usableBottom = h - 8;
-            const bandHeight = (usableBottom - usableTop) / total;
-            tamanho = Math.min(capaMini, passo / 2 - 8, bandHeight - 12);
-            x = xScale(ano) + 4;
-            y = centroYAlbum(ano, album) - tamanho / 2;
-          }
+          const tipo = tipoPorAlbum.get(album);
+          const tamanhoBase = tamanhoPorTipo[tipo] ?? tamanhoPadrao;
+          const tamanho = Math.min(tamanhoBase, passo / 2 - 8, bandHeight - 12);
+          const x = xScale(ano) + 4;
+          const y = centroYAlbum(ano, album) - tamanho / 2;
 
           entradas.push({
             chave: `${ano}__${album}`,
             ano,
             album,
+            tipo,
             slug: slugify(album),
             tamanho,
             x,
@@ -154,7 +156,7 @@ const Grafo = (() => {
 
       grupos.attr("transform", (d) => `translate(${d.x}, ${d.y})`);
 
-      grupos.select("title").text((d) => `${d.album} (${d.ano})`);
+      grupos.select("title").text((d) => `${d.album} (${d.ano}) · ${d.tipo}`);
 
       grupos
         .select("rect.cover-placeholder")
