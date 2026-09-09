@@ -84,3 +84,22 @@ body {
 .cover-label.is-visible {
   opacity: 1;
 }
+
+.count-badge {
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+
+.count-circle {
+  stroke: var(--bg);
+  stroke-width: 1.5;
+}
+
+.count-label {
+  fill: var(--bg);
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: central;
+}

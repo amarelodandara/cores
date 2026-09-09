@@ -57,9 +57,9 @@ const Grafo = (() => {
         .data(anos, (d) => d)
         .join("text")
         .attr("class", "year-label")
-        .attr("x", (d) => xScale(d) + passo / 2)
-        .attr("y", h + 16)
-        .attr("text-anchor", "middle")
+        .attr("x", (d) => xScale(d) + 4)
+        .attr("y", h - 8)
+        .attr("text-anchor", "start")
         .text((d) => d);
     }
 
@@ -74,20 +74,17 @@ const Grafo = (() => {
 
     const margemSuperior = 16;
 
-    // Tamanho-base da capa por tipo de lançamento -- ajusta o teto pra
-    // largura da coluna/banda depois. Mixtape ainda não aparece nos dados
-    // curados (as 3 mixtapes viraram "Álbum" na curadoria), mas o tipo
-    // fica pronto se isso mudar.
-    const tamanhoPorTipo = { Álbum: 72, Mixtape: 56, "Single/EP": 40 };
-    const tamanhoPadrao = 48;
+    // Tamanho-base da capa, teto ajustado depois pra largura da coluna/banda.
+    const tamanhoCapa = 72;
 
     const albunsPorAno = new Map();
-    const tipoPorAlbum = new Map();
+    const faixasPorChave = new Map();
     dados.forEach((d) => {
       if (!albunsPorAno.has(d.ano)) albunsPorAno.set(d.ano, []);
       const lista = albunsPorAno.get(d.ano);
       if (!lista.includes(d.album)) lista.push(d.album);
-      if (!tipoPorAlbum.has(d.album)) tipoPorAlbum.set(d.album, d.tipo_lancamento);
+      const chave = `${d.ano}__${d.album}`;
+      faixasPorChave.set(chave, (faixasPorChave.get(chave) ?? 0) + 1);
     });
 
     // Coluna do ano divide em bandas horizontais, uma por álbum (empilhadas
@@ -121,18 +118,18 @@ const Grafo = (() => {
         const bandHeight = (usableBottom - usableTop) / total;
 
         albuns.forEach((album, i) => {
-          const tipo = tipoPorAlbum.get(album);
-          const tamanhoBase = tamanhoPorTipo[tipo] ?? tamanhoPadrao;
-          const tamanho = Math.min(tamanhoBase, passo / 2 - 8, bandHeight - 12);
+          const tamanho = Math.min(tamanhoCapa, passo / 2 - 8, bandHeight - 12);
           const x = xScale(ano) + 4;
           const y = centroYAlbum(ano, album) - tamanho / 2;
 
+          const chave = `${ano}__${album}`;
+
           entradas.push({
-            chave: `${ano}__${album}`,
+            chave,
             ano,
             album,
-            tipo,
             slug: slugify(album),
+            faixas: faixasPorChave.get(chave) ?? 0,
             tamanho,
             x,
             y,
@@ -150,13 +147,16 @@ const Grafo = (() => {
           g.append("rect").attr("class", "cover-placeholder");
           g.append("image").attr("class", "cover-image");
           g.append("text").attr("class", "cover-label");
+          const badge = g.append("g").attr("class", "count-badge").attr("opacity", 0);
+          badge.append("circle").attr("class", "node count-circle").attr("r", 14);
+          badge.append("text").attr("class", "count-label");
           g.append("title");
           return g;
         });
 
       grupos.attr("transform", (d) => `translate(${d.x}, ${d.y})`);
 
-      grupos.select("title").text((d) => `${d.album} (${d.ano}) · ${d.tipo}`);
+      grupos.select("title").text((d) => `${d.album} (${d.ano})`);
 
       grupos
         .select("rect.cover-placeholder")
@@ -180,10 +180,18 @@ const Grafo = (() => {
         .attr("text-anchor", "middle")
         .text((d) => d.album);
 
+      // badge fica acima da capa, não em cima da arte
+      grupos
+        .select("g.count-badge")
+        .attr("transform", (d) => `translate(${d.tamanho / 2}, -22)`)
+        .select("text.count-label")
+        .text((d) => d.faixas);
+
       grupos
         .on("mouseenter", function (event, d) {
           nodeSel.classed("dim", (s) => s.album !== d.album);
           d3.select(this).select("text.cover-label").classed("is-visible", true);
+          d3.select(this).select("g.count-badge").attr("opacity", 1);
           destaqueRect
             .attr("x", d.slotX)
             .attr("width", d.slotWidth)
@@ -193,6 +201,7 @@ const Grafo = (() => {
         .on("mouseleave", function () {
           nodeSel.classed("dim", false);
           d3.select(this).select("text.cover-label").classed("is-visible", false);
+          d3.select(this).select("g.count-badge").attr("opacity", 0);
           destaqueRect.style("opacity", 0);
         });
     }
@@ -220,6 +229,24 @@ const Grafo = (() => {
       .append("title")
       .text((d) => `${d.titulo} — ${d.album} (${d.ano}) · ${d.palavras} palavras`);
 
+    // A capa se ancora na bolinha mais alta do próprio álbum: só os 15% de
+    // baixo dela cobrem o topo do cluster, o resto sobe pra fora.
+    function posicionarCapas() {
+      const topoPorAlbum = new Map();
+      dados.forEach((d) => {
+        const chave = `${d.ano}__${d.album}`;
+        const topo = d.y - radius(d.palavras);
+        const atual = topoPorAlbum.get(chave);
+        if (atual === undefined || topo < atual) topoPorAlbum.set(chave, topo);
+      });
+
+      grupoCapas.selectAll("g.cover").attr("transform", (c) => {
+        const topo = topoPorAlbum.get(c.chave);
+        const y = topo === undefined ? c.y : topo - c.tamanho * 0.85;
+        return `translate(${c.x}, ${y})`;
+      });
+    }
+
     const simulation = d3
       .forceSimulation(dados)
       .force("x", d3.forceX((d) => centro(d.ano)).strength(0.9))
@@ -230,6 +257,7 @@ const Grafo = (() => {
       )
       .on("tick", () => {
         nodeSel.attr("cx", (d) => d.x).attr("cy", (d) => d.y);
+        posicionarCapas();
       });
 
     window.addEventListener("resize", () => {
